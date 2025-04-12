@@ -30,41 +30,80 @@ const Game: React.FC = () => {
     setSelectedBlockId(blockId);
   };
   
-  // Handle block drag end
-  const handleDragEnd = () => {
-    // If we have a valid preview position and selected block
-    if (previewPosition && selectedBlockId) {
-      const block = blocks.find(b => b.id === selectedBlockId);
-      if (block) {
-        const positions = calculatePositions(block.shape, previewPosition.row, previewPosition.col);
+  // Function to get grid position from screen coordinates
+  const getGridPositionFromCoords = (x: number, y: number) => {
+    if (!gridRef.current) return null;
+    
+    const gridRect = gridRef.current.getBoundingClientRect();
+    const cellSize = gridRect.width / gridSize;
+    
+    // Check if point is within grid bounds
+    if (
+      x < gridRect.left || 
+      x > gridRect.right || 
+      y < gridRect.top || 
+      y > gridRect.bottom
+    ) {
+      return null;
+    }
+    
+    // Calculate cell position
+    const relX = x - gridRect.left;
+    const relY = y - gridRect.top;
+    
+    const col = Math.floor(relX / cellSize);
+    const row = Math.floor(relY / cellSize);
+    
+    // Ensure we're within grid bounds
+    if (row < 0 || row >= gridSize || col < 0 || col >= gridSize) {
+      return null;
+    }
+    
+    return { row, col };
+  };
+  
+  // Handle block drag end - modified to use coordinates
+  const handleDragEnd = (x: number, y: number) => {
+    if (!selectedBlockId) return;
+    
+    const gridPosition = getGridPositionFromCoords(x, y);
+    const block = blocks.find(b => b.id === selectedBlockId);
+    
+    if (gridPosition && block) {
+      const { row, col } = gridPosition;
+      
+      // Calculate positions based on block shape
+      const positions = calculatePositions(block.shape, row, col);
+      
+      // Make sure block doesn't extend past grid edge
+      const isWithinBounds = positions.every(pos => 
+        pos.row >= 0 && pos.row < gridSize && 
+        pos.col >= 0 && pos.col < gridSize
+      );
+      
+      // Check if placement is valid
+      const isValid = isWithinBounds && isValidPlacement(grid, block.shape, row, col);
+      
+      if (isValid) {
+        // Dispatch action to place block
+        dispatch({
+          type: 'PLACE_BLOCK',
+          blockId: selectedBlockId,
+          positions,
+        });
         
-        // Make sure block doesn't extend past grid edge
-        const isWithinBounds = positions.every(pos => 
-          pos.row >= 0 && pos.row < gridSize && 
-          pos.col >= 0 && pos.col < gridSize
-        );
+        // Update next block type in rotation
+        if (nextBlockType === 'silver') setNextBlockType('gold');
+        else if (nextBlockType === 'gold') setNextBlockType('platinum');
+        else if (nextBlockType === 'platinum') setNextBlockType('copper');
+        else setNextBlockType('silver');
         
-        if (isWithinBounds) {
-          // Dispatch action to place block
-          dispatch({
-            type: 'PLACE_BLOCK',
-            blockId: selectedBlockId,
-            positions,
-          });
-          
-          // Update next block type in rotation (silver -> gold -> platinum -> copper -> silver)
-          if (nextBlockType === 'silver') setNextBlockType('gold');
-          else if (nextBlockType === 'gold') setNextBlockType('platinum');
-          else if (nextBlockType === 'platinum') setNextBlockType('copper');
-          else setNextBlockType('silver');
-          
-          // Play sound effect
-          placeBlock();
-        }
+        // Play sound effect
+        placeBlock();
       }
     }
     
-    // Reset state - Important to clear this AFTER block placement to prevent snapping back
+    // Reset state
     setSelectedBlockId(null);
     setHighlightPositions([]);
     setPreviewPosition(null);

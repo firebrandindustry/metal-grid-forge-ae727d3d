@@ -6,7 +6,7 @@ import { useGame } from '@/context/GameContext';
 
 const AvailableBlocks: React.FC<{
   onDragStart: (blockId: string) => void;
-  onDragEnd: () => void;
+  onDragEnd: (x: number, y: number) => void;
 }> = ({ onDragStart, onDragEnd }) => {
   const { state } = useGame();
   const { blocks } = state;

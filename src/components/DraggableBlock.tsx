@@ -1,13 +1,13 @@
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, PanInfo, useMotionValue } from 'framer-motion';
 import { useGame } from '@/context/GameContext';
 import { BlockShape, Position } from '@/types/game';
 
 type DraggableBlockProps = {
   block: BlockShape;
   onDragStart: (blockId: string) => void;
-  onDragEnd: () => void;
+  onDragEnd: (x: number, y: number) => void;
 };
 
 const DraggableBlock: React.FC<DraggableBlockProps> = ({
@@ -16,6 +16,9 @@ const DraggableBlock: React.FC<DraggableBlockProps> = ({
   onDragEnd,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
+  const blockRef = useRef<HTMLDivElement>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
   
   const cellSize = 40; // Size of each cell in the block
   
@@ -24,17 +27,29 @@ const DraggableBlock: React.FC<DraggableBlockProps> = ({
     onDragStart(block.id);
   };
   
-  const handleDragEnd = () => {
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     setIsDragging(false);
-    onDragEnd();
+    
+    // Get the final position
+    const blockElement = blockRef.current;
+    if (blockElement) {
+      const rect = blockElement.getBoundingClientRect();
+      onDragEnd(rect.left, rect.top);
+    }
+    
+    // Reset position for next drag
+    x.set(0);
+    y.set(0);
   };
   
   return (
     <motion.div
+      ref={blockRef}
       className={`relative draggable-block ${isDragging ? 'z-50' : 'z-10'}`}
       drag
-      dragSnapToOrigin={false} // Don't snap back to origin
-      dragMomentum={false} // Disable momentum for more precise placement
+      dragSnapToOrigin={true} // This will now ensure it snaps back if not properly placed
+      dragMomentum={false}
+      dragElastic={0}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       style={{
@@ -42,6 +57,8 @@ const DraggableBlock: React.FC<DraggableBlockProps> = ({
         height: block.height * cellSize,
         touchAction: 'none',
         cursor: 'grab',
+        x,
+        y,
       }}
     >
       <div
