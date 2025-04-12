@@ -1,59 +1,49 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { BlockType, BlockShape, GameState } from '@/types/game';
 
-// Define the block shapes as matrices
+// Define the block shapes as matrices (Tetris-style blocks only)
 const blockShapes = {
-  // 1x1 block
-  single: [
-    [true],
+  // I-shape (horizontal tetromino)
+  iShape: [
+    [true, true, true, true],
   ],
   
-  // 2x1 horizontal block
-  horizontal2: [
-    [true, true],
-  ],
-  
-  // 1x2 vertical block
-  vertical2: [
-    [true],
-    [true],
-  ],
-  
-  // 2x2 square block
-  square: [
+  // O-shape (square tetromino)
+  oShape: [
     [true, true],
     [true, true],
   ],
   
-  // L-shaped block
-  lShape: [
-    [true, false],
-    [true, true],
-  ],
-  
-  // Reverse L-shaped block
-  reverseLShape: [
-    [false, true],
-    [true, true],
-  ],
-  
-  // T-shaped block
+  // T-shape tetromino
   tShape: [
     [true, true, true],
     [false, true, false],
   ],
   
-  // Horizontal 3 block
-  horizontal3: [
-    [true, true, true],
+  // L-shape tetromino
+  lShape: [
+    [true, false],
+    [true, false],
+    [true, true],
   ],
   
-  // Vertical 3 block
-  vertical3: [
-    [true],
-    [true],
-    [true],
+  // J-shape tetromino (reverse L)
+  jShape: [
+    [false, true],
+    [false, true],
+    [true, true],
+  ],
+  
+  // S-shape tetromino
+  sShape: [
+    [false, true, true],
+    [true, true, false],
+  ],
+  
+  // Z-shape tetromino
+  zShape: [
+    [true, true, false],
+    [false, true, true],
   ],
 };
 
@@ -61,19 +51,19 @@ const blockShapes = {
 const getAvailableShapes = (level: number) => {
   // Start with simple shapes
   if (level === 1) {
-    return ['single', 'horizontal2', 'vertical2'];
+    return ['iShape', 'oShape'];
   }
   
   // Add more complex shapes as levels progress
   if (level === 2) {
-    return ['single', 'horizontal2', 'vertical2', 'square'];
+    return ['iShape', 'oShape', 'tShape'];
   }
   
   if (level === 3) {
-    return ['horizontal2', 'vertical2', 'square', 'lShape', 'reverseLShape'];
+    return ['iShape', 'oShape', 'tShape', 'lShape', 'jShape'];
   }
   
-  // More complex shapes for higher levels
+  // All Tetris shapes for higher levels
   return Object.keys(blockShapes);
 };
 
@@ -94,11 +84,11 @@ const getAvailableTypes = (level: number): BlockType[] => {
     return ['silver', 'gold', 'platinum'];
   }
   
-  return ['silver', 'gold', 'platinum'];
+  return ['silver', 'gold', 'platinum', 'copper'];
 };
 
 // Generate a set of random blocks for the player
-export const generateBlocks = (level: number): BlockShape[] => {
+export const generateBlocks = (level: number, preferredType?: BlockType): BlockShape[] => {
   const availableShapes = getAvailableShapes(level);
   const availableTypes = getAvailableTypes(level);
   
@@ -113,8 +103,8 @@ export const generateBlocks = (level: number): BlockShape[] => {
     // @ts-ignore - We know these keys exist in the blockShapes object
     const shapeMatrix = blockShapes[shapeKey];
     
-    // Pick a random type
-    const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+    // Use the preferred type if provided, otherwise pick a random type
+    const type = preferredType || availableTypes[Math.floor(Math.random() * availableTypes.length)];
     
     blocks.push({
       id: uuidv4(),

@@ -9,7 +9,7 @@ import GameControls from '@/components/GameControls';
 import GameOver from '@/components/GameOver';
 import LevelReward from '@/components/LevelReward';
 import ParticleEffect from '@/components/ParticleEffect';
-import { Position } from '@/types/game';
+import { Position, BlockType } from '@/types/game';
 import { isValidPlacement, calculatePositions } from '@/utils/gameUtils';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 
@@ -22,6 +22,7 @@ const Game: React.FC = () => {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [highlightPositions, setHighlightPositions] = useState<Position[]>([]);
   const [previewPosition, setPreviewPosition] = useState<{ row: number; col: number } | null>(null);
+  const [nextBlockType, setNextBlockType] = useState<BlockType>('silver');
   
   // Handle block selection
   const handleBlockSelect = (blockId: string) => {
@@ -43,15 +44,25 @@ const Game: React.FC = () => {
           positions,
         });
         
+        // Update next block type in rotation (silver -> gold -> platinum -> copper -> silver)
+        if (nextBlockType === 'silver') setNextBlockType('gold');
+        else if (nextBlockType === 'gold') setNextBlockType('platinum');
+        else if (nextBlockType === 'platinum') setNextBlockType('copper');
+        else setNextBlockType('silver');
+        
         // Play sound effect
         placeBlock();
       }
+      
+      // Reset state - Important to clear this AFTER block placement to prevent snapping back
+      setSelectedBlockId(null);
+      setHighlightPositions([]);
+      setPreviewPosition(null);
+    } else if (selectedBlockId) {
+      // If no valid position found, manually snap back
+      setSelectedBlockId(null);
+      setHighlightPositions([]);
     }
-    
-    // Reset state
-    setSelectedBlockId(null);
-    setHighlightPositions([]);
-    setPreviewPosition(null);
   };
   
   // Handle clicking on the grid
@@ -70,6 +81,12 @@ const Game: React.FC = () => {
         blockId: selectedBlockId,
         positions,
       });
+      
+      // Update next block type in rotation
+      if (nextBlockType === 'silver') setNextBlockType('gold');
+      else if (nextBlockType === 'gold') setNextBlockType('platinum');
+      else if (nextBlockType === 'platinum') setNextBlockType('copper');
+      else setNextBlockType('silver');
       
       // Play sound effect
       placeBlock();
@@ -130,6 +147,16 @@ const Game: React.FC = () => {
       window.removeEventListener('mousemove', handleMouseMove);
     };
   }, [selectedBlockId, gameOver, state.grid.length]);
+  
+  // Pass the next block type to the NEW_BLOCKS action
+  useEffect(() => {
+    if (blocks.length === 0 && !gameOver) {
+      dispatch({ 
+        type: 'NEW_BLOCKS',
+        blockType: nextBlockType
+      });
+    }
+  }, [blocks.length, gameOver, dispatch, nextBlockType]);
   
   return (
     <div className="min-h-screen flex flex-col items-center justify-between py-6 px-4 overflow-hidden">

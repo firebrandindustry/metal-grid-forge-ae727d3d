@@ -6,7 +6,7 @@ import { generateBlocks, checkForCompletedRows, isGameOver } from '@/utils/gameU
 type GameAction =
   | { type: 'PLACE_BLOCK'; blockId: string; positions: Position[] }
   | { type: 'CLEAR_ROWS'; rows: number[] }
-  | { type: 'NEW_BLOCKS' }
+  | { type: 'NEW_BLOCKS'; blockType?: BlockType }
   | { type: 'RESET_GAME' }
   | { type: 'TOGGLE_PAUSE' }
   | { type: 'TOGGLE_SOUND' }
@@ -136,7 +136,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'NEW_BLOCKS': {
       return {
         ...state,
-        blocks: generateBlocks(state.level),
+        blocks: generateBlocks(state.level, action.blockType),
       };
     }
 
