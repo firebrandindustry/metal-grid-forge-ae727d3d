@@ -33,13 +33,15 @@ const DraggableBlock: React.FC<DraggableBlockProps> = ({
     <motion.div
       className={`relative draggable-block ${isDragging ? 'z-50' : 'z-10'}`}
       drag
-      dragSnapToOrigin
+      dragSnapToOrigin // We keep this as a fallback in case no valid position is found
+      dragMomentum={false} // Disable momentum for more precise placement
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       style={{
         width: block.width * cellSize,
         height: block.height * cellSize,
         touchAction: 'none',
+        cursor: 'grab',
       }}
     >
       <div

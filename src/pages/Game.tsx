@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useGame } from '@/context/GameContext';
 import GameGrid from '@/components/GameGrid';
@@ -17,6 +17,7 @@ const Game: React.FC = () => {
   const { state, dispatch } = useGame();
   const { grid, blocks, gameOver } = state;
   const { placeBlock, clearRow } = useSoundEffects();
+  const gridRef = useRef<HTMLDivElement>(null);
   
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [highlightPositions, setHighlightPositions] = useState<Position[]>([]);
@@ -101,6 +102,35 @@ const Game: React.FC = () => {
     }
   };
   
+  // Add event listener to track mouse movement over the grid
+  useEffect(() => {
+    const gridElement = gridRef.current;
+    if (!gridElement) return;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!selectedBlockId || gameOver) return;
+      
+      const rect = gridElement.getBoundingClientRect();
+      const cellSize = rect.width / state.grid.length;
+      
+      // Calculate the row and column based on mouse position
+      const relativeX = e.clientX - rect.left;
+      const relativeY = e.clientY - rect.top;
+      
+      if (relativeX >= 0 && relativeX < rect.width && relativeY >= 0 && relativeY < rect.height) {
+        const col = Math.floor(relativeX / cellSize);
+        const row = Math.floor(relativeY / cellSize);
+        updateHighlightPositions(row, col);
+      }
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [selectedBlockId, gameOver, state.grid.length]);
+  
   return (
     <div className="min-h-screen flex flex-col items-center justify-between py-6 px-4 overflow-hidden">
       <ParticleEffect />
@@ -118,10 +148,12 @@ const Game: React.FC = () => {
       <div className="w-full max-w-md mx-auto flex-1 flex flex-col">
         <ScoreDisplay />
         
-        <GameGrid 
-          highlightPositions={highlightPositions}
-          onCellClick={handleCellClick}
-        />
+        <div ref={gridRef} className="w-full">
+          <GameGrid 
+            highlightPositions={highlightPositions}
+            onCellClick={handleCellClick}
+          />
+        </div>
         
         <AvailableBlocks 
           onDragStart={handleBlockSelect}
