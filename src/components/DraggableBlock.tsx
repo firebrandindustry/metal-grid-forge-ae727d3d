@@ -33,8 +33,7 @@ const DraggableBlock: React.FC<DraggableBlockProps> = ({
     <motion.div
       className={`relative draggable-block ${isDragging ? 'z-50' : 'z-10'}`}
       drag
-      // Only snap to origin if no valid position is found (handled in the Game component)
-      dragSnapToOrigin={false}
+      dragSnapToOrigin={false} // Don't snap back to origin
       dragMomentum={false} // Disable momentum for more precise placement
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}

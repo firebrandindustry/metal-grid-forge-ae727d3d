@@ -14,8 +14,9 @@ import { isValidPlacement, calculatePositions } from '@/utils/gameUtils';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 
 const Game: React.FC = () => {
-  const { state, dispatch } = useGame();
+  const { state, dispatch, settings } = useGame();
   const { grid, blocks, gameOver } = state;
+  const { gridSize } = settings;
   const { placeBlock, clearRow } = useSoundEffects();
   const gridRef = useRef<HTMLDivElement>(null);
   
@@ -37,32 +38,36 @@ const Game: React.FC = () => {
       if (block) {
         const positions = calculatePositions(block.shape, previewPosition.row, previewPosition.col);
         
-        // Dispatch action to place block
-        dispatch({
-          type: 'PLACE_BLOCK',
-          blockId: selectedBlockId,
-          positions,
-        });
+        // Make sure block doesn't extend past grid edge
+        const isWithinBounds = positions.every(pos => 
+          pos.row >= 0 && pos.row < gridSize && 
+          pos.col >= 0 && pos.col < gridSize
+        );
         
-        // Update next block type in rotation (silver -> gold -> platinum -> copper -> silver)
-        if (nextBlockType === 'silver') setNextBlockType('gold');
-        else if (nextBlockType === 'gold') setNextBlockType('platinum');
-        else if (nextBlockType === 'platinum') setNextBlockType('copper');
-        else setNextBlockType('silver');
-        
-        // Play sound effect
-        placeBlock();
+        if (isWithinBounds) {
+          // Dispatch action to place block
+          dispatch({
+            type: 'PLACE_BLOCK',
+            blockId: selectedBlockId,
+            positions,
+          });
+          
+          // Update next block type in rotation (silver -> gold -> platinum -> copper -> silver)
+          if (nextBlockType === 'silver') setNextBlockType('gold');
+          else if (nextBlockType === 'gold') setNextBlockType('platinum');
+          else if (nextBlockType === 'platinum') setNextBlockType('copper');
+          else setNextBlockType('silver');
+          
+          // Play sound effect
+          placeBlock();
+        }
       }
-      
-      // Reset state - Important to clear this AFTER block placement to prevent snapping back
-      setSelectedBlockId(null);
-      setHighlightPositions([]);
-      setPreviewPosition(null);
-    } else if (selectedBlockId) {
-      // If no valid position found, manually snap back
-      setSelectedBlockId(null);
-      setHighlightPositions([]);
     }
+    
+    // Reset state - Important to clear this AFTER block placement to prevent snapping back
+    setSelectedBlockId(null);
+    setHighlightPositions([]);
+    setPreviewPosition(null);
   };
   
   // Handle clicking on the grid
@@ -72,24 +77,33 @@ const Game: React.FC = () => {
     const block = blocks.find(b => b.id === selectedBlockId);
     if (!block) return;
     
+    // Check if placement is valid and within bounds
     if (isValidPlacement(grid, block.shape, row, col)) {
       const positions = calculatePositions(block.shape, row, col);
       
-      // Dispatch action to place block
-      dispatch({
-        type: 'PLACE_BLOCK',
-        blockId: selectedBlockId,
-        positions,
-      });
+      // Make sure block doesn't extend past grid edge
+      const isWithinBounds = positions.every(pos => 
+        pos.row >= 0 && pos.row < gridSize && 
+        pos.col >= 0 && pos.col < gridSize
+      );
       
-      // Update next block type in rotation
-      if (nextBlockType === 'silver') setNextBlockType('gold');
-      else if (nextBlockType === 'gold') setNextBlockType('platinum');
-      else if (nextBlockType === 'platinum') setNextBlockType('copper');
-      else setNextBlockType('silver');
-      
-      // Play sound effect
-      placeBlock();
+      if (isWithinBounds) {
+        // Dispatch action to place block
+        dispatch({
+          type: 'PLACE_BLOCK',
+          blockId: selectedBlockId,
+          positions,
+        });
+        
+        // Update next block type in rotation
+        if (nextBlockType === 'silver') setNextBlockType('gold');
+        else if (nextBlockType === 'gold') setNextBlockType('platinum');
+        else if (nextBlockType === 'platinum') setNextBlockType('copper');
+        else setNextBlockType('silver');
+        
+        // Play sound effect
+        placeBlock();
+      }
       
       // Reset state
       setSelectedBlockId(null);
@@ -109,12 +123,25 @@ const Game: React.FC = () => {
     if (!block) return;
     
     const positions = calculatePositions(block.shape, row, col);
-    setHighlightPositions(positions);
     
-    // Store preview position if valid
-    if (isValidPlacement(grid, block.shape, row, col)) {
-      setPreviewPosition({ row, col });
+    // Check if all positions are within grid bounds
+    const isWithinBounds = positions.every(pos => 
+      pos.row >= 0 && pos.row < gridSize && 
+      pos.col >= 0 && pos.col < gridSize
+    );
+    
+    // Only set highlights if within bounds
+    if (isWithinBounds) {
+      setHighlightPositions(positions);
+      
+      // Store preview position if valid
+      if (isValidPlacement(grid, block.shape, row, col)) {
+        setPreviewPosition({ row, col });
+      } else {
+        setPreviewPosition(null);
+      }
     } else {
+      setHighlightPositions([]);
       setPreviewPosition(null);
     }
   };
@@ -128,7 +155,7 @@ const Game: React.FC = () => {
       if (!selectedBlockId || gameOver) return;
       
       const rect = gridElement.getBoundingClientRect();
-      const cellSize = rect.width / state.grid.length;
+      const cellSize = rect.width / gridSize;
       
       // Calculate the row and column based on mouse position
       const relativeX = e.clientX - rect.left;
@@ -138,6 +165,10 @@ const Game: React.FC = () => {
         const col = Math.floor(relativeX / cellSize);
         const row = Math.floor(relativeY / cellSize);
         updateHighlightPositions(row, col);
+      } else {
+        // Mouse is outside the grid
+        setHighlightPositions([]);
+        setPreviewPosition(null);
       }
     };
     
@@ -146,7 +177,7 @@ const Game: React.FC = () => {
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
     };
-  }, [selectedBlockId, gameOver, state.grid.length]);
+  }, [selectedBlockId, gameOver, gridSize]);
   
   // Pass the next block type to the NEW_BLOCKS action
   useEffect(() => {
